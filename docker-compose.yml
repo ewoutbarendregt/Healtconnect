@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  computer-use:
+    image: ghcr.io/anthropics/anthropic-quickstarts:computer-use-demo-latest
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - WIDTH=1024
+      - HEIGHT=768
+    ports:
+      - "5900:5900"   # VNC
+      - "6080:6080"   # noVNC web viewer
+      - "8080:8080"   # Combined interface
+    volumes:
+      - ./data/downloads:/tmp/downloads
+      - ./data/processed:/tmp/processed
+    networks:
+      - healthconnect-network
+
+  orchestrator:
+    build: .
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - COMPUTER_USE_HOST=computer-use
+      - COMPUTER_USE_PORT=8080
+      - USE_SIMULATION=true
+      - SIMULATION_APP_URL=http://simulation:3000
+    volumes:
+      - ./data:/app/data
+      - ./src:/app/src
+      - ./prompts:/app/prompts
+      - ./tests:/app/tests
+    depends_on:
+      - computer-use
+      - simulation
+    networks:
+      - healthconnect-network
+    command: python -m src.main
+
+  simulation:
+    build: ./simulation
+    ports:
+      - "3000:3000"
+    networks:
+      - healthconnect-network
+
+networks:
+  healthconnect-network:
+    driver: bridge

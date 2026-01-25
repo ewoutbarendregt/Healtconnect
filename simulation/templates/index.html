@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthConnect Simulation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #0066cc;
+            padding-bottom: 10px;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #e0e0e0;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px 4px 0 0;
+        }
+        .tab.active {
+            background-color: #0066cc;
+            color: white;
+        }
+        .attachments {
+            margin-top: 20px;
+        }
+        .attachment-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            background-color: #fafafa;
+        }
+        .attachment-info {
+            flex: 1;
+        }
+        .attachment-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .attachment-meta {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .attachment-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .menu-dots {
+            cursor: pointer;
+            font-size: 20px;
+            padding: 5px 10px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+        }
+        .menu-dots:hover {
+            background-color: #e0e0e0;
+        }
+        .context-menu {
+            display: none;
+            position: absolute;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 1000;
+        }
+        .context-menu.show {
+            display: block;
+        }
+        .context-menu-item {
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        .context-menu-item:hover {
+            background-color: #f0f0f0;
+        }
+        .upload-section {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            display: none;
+        }
+        .upload-section.show {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .form-group textarea {
+            min-height: 80px;
+        }
+        .btn {
+            padding: 10px 20px;
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .btn:hover {
+            background-color: #0052a3;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .header-menu {
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>HealthConnect Patiënt Dossier</h1>
+
+        <div class="header-actions">
+            <div class="tabs">
+                <button class="tab">Algemeen</button>
+                <button class="tab active" id="bijlage-tab">Bijlage</button>
+                <button class="tab">Medicatie</button>
+            </div>
+            <div class="header-menu">
+                <span class="menu-dots" id="header-menu-btn">⋮</span>
+                <div class="context-menu" id="header-menu">
+                    <div class="context-menu-item" id="add-attachment-btn">Bijlage toevoegen</div>
+                    <div class="context-menu-item">Contact bewerken</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="upload-section" id="upload-section">
+            <h3>Bijlage toevoegen</h3>
+            <form id="upload-form">
+                <div class="form-group">
+                    <label>Type document</label>
+                    <select name="document_type">
+                        <option value="specialistenbrief">Specialistenbrief</option>
+                        <option value="patiëntbrief">Patiëntbrief</option>
+                        <option value="verwijsbrief">Verwijsbrief</option>
+                        <option value="afspraakbericht">Afspraakbericht</option>
+                        <option value="aanvraagformulier">Aanvraagformulier</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Bestand kiezen</label>
+                    <input type="file" name="file" required>
+                </div>
+                <div class="form-group">
+                    <label>Logische naam</label>
+                    <input type="text" name="logical_name" placeholder="bijv. NEU.Stam">
+                </div>
+                <div class="form-group">
+                    <label>Samenvatting</label>
+                    <textarea name="summary" placeholder="Korte samenvatting van het document"></textarea>
+                </div>
+                <button type="submit" class="btn">Toepassen</button>
+                <button type="button" class="btn btn-secondary" id="cancel-upload">Annuleren</button>
+            </form>
+        </div>
+
+        <div class="attachments">
+            <h3>Bijlagen</h3>
+            <div id="attachments-list">
+                {% for attachment in attachments %}
+                <div class="attachment-item" data-id="{{ attachment.id }}">
+                    <div class="attachment-info">
+                        <div class="attachment-name">{{ attachment.name }}</div>
+                        <div class="attachment-meta">
+                            Type: {{ attachment.type|upper }}
+                            {% if attachment.logical_name %}
+                            | Logische naam: {{ attachment.logical_name }}
+                            {% endif %}
+                            {% if attachment.summary %}
+                            | Samenvatting: {{ attachment.summary }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="attachment-actions">
+                        <span class="menu-dots attachment-menu-btn" data-id="{{ attachment.id }}">⋮</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="context-menu" id="attachment-menu">
+            <div class="context-menu-item" data-action="download">Downloaden</div>
+            <div class="context-menu-item" data-action="delete">Verwijderen</div>
+        </div>
+
+        <div style="margin-top: 30px;">
+            <button class="btn" id="finalize-btn">Afronden</button>
+        </div>
+    </div>
+
+    <script>
+        let currentMenuAttachmentId = null;
+
+        // Header menu
+        document.getElementById('header-menu-btn').addEventListener('click', function(e) {
+            e.stopPropagation();
+            const menu = document.getElementById('header-menu');
+            menu.classList.toggle('show');
+            const rect = this.getBoundingClientRect();
+            menu.style.top = (rect.bottom + 5) + 'px';
+            menu.style.left = (rect.left - 100) + 'px';
+        });
+
+        // Add attachment
+        document.getElementById('add-attachment-btn').addEventListener('click', function() {
+            document.getElementById('upload-section').classList.add('show');
+            document.getElementById('header-menu').classList.remove('show');
+        });
+
+        // Cancel upload
+        document.getElementById('cancel-upload').addEventListener('click', function() {
+            document.getElementById('upload-section').classList.remove('show');
+        });
+
+        // Upload form
+        document.getElementById('upload-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                alert('Bijlage toegevoegd');
+                location.reload();
+            } else {
+                alert('Fout bij uploaden');
+            }
+        });
+
+        // Attachment menu
+        document.querySelectorAll('.attachment-menu-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                currentMenuAttachmentId = this.dataset.id;
+                const menu = document.getElementById('attachment-menu');
+                menu.classList.add('show');
+                const rect = this.getBoundingClientRect();
+                menu.style.top = (rect.bottom + 5) + 'px';
+                menu.style.left = (rect.left - 100) + 'px';
+            });
+        });
+
+        // Attachment menu actions
+        document.querySelectorAll('#attachment-menu .context-menu-item').forEach(item => {
+            item.addEventListener('click', async function() {
+                const action = this.dataset.action;
+
+                if (action === 'download') {
+                    window.location.href = `/api/download/${currentMenuAttachmentId}`;
+                } else if (action === 'delete') {
+                    if (confirm('Weet u zeker dat u deze bijlage wilt verwijderen?')) {
+                        const response = await fetch(`/api/delete/${currentMenuAttachmentId}`, {
+                            method: 'DELETE'
+                        });
+                        if (response.ok) {
+                            location.reload();
+                        }
+                    }
+                }
+
+                document.getElementById('attachment-menu').classList.remove('show');
+            });
+        });
+
+        // Finalize
+        document.getElementById('finalize-btn').addEventListener('click', async function() {
+            const financialHandling = prompt('Financiële afhandeling:\n\n1. Geen financiële afhandeling\n2. Met financiële afhandeling\n\nKies optie (1 of 2):');
+
+            if (financialHandling === '1' || financialHandling === '2') {
+                const response = await fetch('/api/finalize', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        financial_handling: financialHandling === '1' ? 'none' : 'standard'
+                    })
+                });
+
+                if (response.ok) {
+                    alert('Contact afgerond');
+                }
+            }
+        });
+
+        // Close menus when clicking outside
+        document.addEventListener('click', function() {
+            document.querySelectorAll('.context-menu').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        });
+    </script>
+</body>
+</html>
