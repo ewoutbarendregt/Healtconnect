@@ -31,6 +31,10 @@ class Config:
     MAX_TOTAL_ITERATIONS = 50
     STEP_TIMEOUT_SECONDS = 120
 
+    # Parallel Processing
+    DEFAULT_BATCH_SIZE = 3  # Number of documents to process concurrently
+    MAX_BATCH_SIZE = 10  # Maximum allowed batch size (to prevent overwhelming the system)
+
     # Browser settings for computer use
     SCREEN_WIDTH = 1024
     SCREEN_HEIGHT = 768

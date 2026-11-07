@@ -118,11 +118,20 @@ You'll see a HealthConnect simulation with test .txt files ready for processing.
 ### Process All Documents
 
 ```bash
-# Against simulation (default)
+# Sequential processing (default - one at a time)
 python src/main.py --simulation
+
+# Parallel processing (process 3 documents at a time)
+python src/main.py --simulation --parallel
+
+# Parallel with custom batch size (process 5 at a time)
+python src/main.py --simulation --parallel --batch-size 5
 
 # Against production HealthConnect
 python src/main.py --production
+
+# Parallel in production
+python src/main.py --production --parallel --batch-size 3
 ```
 
 ### Process Single Document
@@ -218,6 +227,62 @@ Verify the uploaded PDF appears with correct metadata.
 ### Step 8: Delete Original
 
 Delete original .txt file (only after verification passes).
+
+## Parallel Processing
+
+### Overview
+
+The system supports processing multiple documents simultaneously in batches:
+
+- **Sequential Mode** (default): Processes one document at a time - safest option
+- **Parallel Mode** (`--parallel`): Processes multiple documents concurrently - faster for large batches
+
+### Usage
+
+```bash
+# Process 3 documents at a time (recommended)
+python src/main.py --parallel --batch-size 3
+
+# Process 5 documents at a time
+python src/main.py --parallel --batch-size 5
+
+# Use default batch size (3)
+python src/main.py --parallel
+```
+
+### Batch Size Recommendations
+
+| Scenario | Recommended Batch Size | Reason |
+|----------|----------------------|--------|
+| Simulation/Testing | 3-5 | Good balance of speed and monitoring |
+| Production (small dataset) | 2-3 | Conservative, easier to troubleshoot |
+| Production (large dataset) | 3-5 | Faster processing, still manageable |
+| Low resources | 1-2 | Prevents system overload |
+| High resources | 5-10 | Maximum throughput (max limit: 10) |
+
+### Considerations
+
+**Advantages**:
+- ✅ Faster processing for large batches
+- ✅ Better resource utilization
+- ✅ Independent document processing
+
+**Trade-offs**:
+- ⚠️ More complex error tracking
+- ⚠️ Higher memory usage
+- ⚠️ Potential rate limit issues with Claude API
+
+**When to use Sequential**:
+- First-time testing
+- Debugging issues
+- Limited system resources
+- Small number of documents (< 5)
+
+**When to use Parallel**:
+- Large batches (10+ documents)
+- Proven stable system
+- Adequate resources available
+- Time-sensitive processing
 
 ## Safety Features
 

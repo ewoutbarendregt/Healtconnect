@@ -281,14 +281,18 @@ class HealthConnectAutomation:
         self.logger = get_logger("main")
         Config.validate()
 
-    async def process_all_documents(self) -> int:
+    async def process_all_documents(self, parallel: bool = False, batch_size: int = 3) -> int:
         """
         Process all documents in the patient file.
+
+        Args:
+            parallel: If True, process documents in parallel batches
+            batch_size: Number of documents to process concurrently (default 3)
 
         Returns:
             Number of documents successfully processed
         """
-        self.logger.info("Starting document processing")
+        self.logger.info(f"Starting document processing (parallel={parallel}, batch_size={batch_size})")
 
         agent = ComputerUseAgent()
 
@@ -301,24 +305,25 @@ class HealthConnectAutomation:
             self.logger.error(f"Failed to get file list: {e}")
             return 0
 
-        # Process each file
+        # Filter to .txt files only
+        txt_files = [f for f in file_list if f.endswith('.txt')]
+
+        if parallel:
+            return await self._process_parallel(txt_files, batch_size)
+        else:
+            return await self._process_sequential(txt_files)
+
+    async def _process_sequential(self, file_list: List[str]) -> int:
+        """Process documents sequentially (one at a time)."""
         success_count = 0
         for filename in file_list:
-            if not filename.endswith('.txt'):
-                continue
-
             document_id = Path(filename).stem
             self.logger.info(f"Processing document: {document_id}")
 
             processor = DocumentProcessor(document_id)
 
             try:
-                # Check if file exists in downloads (already downloaded)
                 txt_file = Config.DOWNLOAD_DIR / filename
-                if not txt_file.exists():
-                    # Will be downloaded by processor
-                    txt_file = Config.DOWNLOAD_DIR / filename
-
                 await processor.process_document(txt_file)
                 success_count += 1
 
@@ -328,6 +333,89 @@ class HealthConnectAutomation:
 
         self.logger.info(f"Completed: {success_count}/{len(file_list)} documents processed")
         return success_count
+
+    async def _process_parallel(self, file_list: List[str], batch_size: int) -> int:
+        """
+        Process documents in parallel batches.
+
+        Args:
+            file_list: List of filenames to process
+            batch_size: Number of documents to process concurrently
+
+        Returns:
+            Number of documents successfully processed
+        """
+        success_count = 0
+        total_files = len(file_list)
+
+        # Process in batches
+        for batch_start in range(0, total_files, batch_size):
+            batch_end = min(batch_start + batch_size, total_files)
+            batch = file_list[batch_start:batch_end]
+
+            self.logger.info(
+                f"Processing batch {batch_start//batch_size + 1}: "
+                f"files {batch_start + 1}-{batch_end} of {total_files}"
+            )
+
+            # Create tasks for this batch
+            tasks = []
+            for filename in batch:
+                document_id = Path(filename).stem
+                processor = DocumentProcessor(document_id)
+                txt_file = Config.DOWNLOAD_DIR / filename
+
+                task = asyncio.create_task(
+                    self._process_document_safe(processor, txt_file, filename)
+                )
+                tasks.append(task)
+
+            # Wait for all tasks in this batch to complete
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Count successes
+            for result in results:
+                if isinstance(result, bool) and result:
+                    success_count += 1
+                elif isinstance(result, Exception):
+                    self.logger.error(f"Batch task failed: {result}")
+
+            self.logger.info(
+                f"Batch {batch_start//batch_size + 1} completed: "
+                f"{success_count}/{batch_end} successful so far"
+            )
+
+        self.logger.info(f"All batches completed: {success_count}/{total_files} documents processed")
+        return success_count
+
+    async def _process_document_safe(
+        self,
+        processor: DocumentProcessor,
+        txt_file: Path,
+        filename: str
+    ) -> bool:
+        """
+        Safely process a single document (for parallel execution).
+
+        Args:
+            processor: Document processor instance
+            txt_file: Path to text file
+            filename: Original filename
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            await processor.process_document(txt_file)
+            self.logger.info(f"✓ Successfully processed: {filename}")
+            return True
+
+        except WorkflowError as e:
+            self.logger.error(f"✗ Failed to process {filename}: {e}")
+            return False
+        except Exception as e:
+            self.logger.error(f"✗ Unexpected error processing {filename}: {e}")
+            return False
 
     async def process_single_document(self, file_id: str) -> bool:
         """
@@ -457,6 +545,17 @@ async def main():
         action="store_true",
         help="Cleanup trash folder"
     )
+    parser.add_argument(
+        "--parallel",
+        action="store_true",
+        help="Process documents in parallel batches"
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=3,
+        help="Number of documents to process concurrently (default: 3)"
+    )
 
     args = parser.parse_args()
 
@@ -489,7 +588,10 @@ async def main():
         sys.exit(0 if success else 1)
 
     # Process all documents
-    count = await app.process_all_documents()
+    count = await app.process_all_documents(
+        parallel=args.parallel,
+        batch_size=args.batch_size
+    )
     print(f"Processed {count} documents")
 
 
